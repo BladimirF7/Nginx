@@ -1,0 +1,4 @@
+In cases where a customer requests to turn off Search Engine indexing, or enable the “noindex” tag for a custom domain in nginx.. In Nginx on our platform, the standard add_header directive does not allow the ‘noindex’ tag to be set for custom domains. Nginx will not test properly in those cases.
+
+  if ($host ~* "^.*\.domain\.(com|cloud)$") { set $is_temporary_domain 1; }
+  if ( $is_temporary_domain = 1 ) { set $http_redir_robots_tag "noindex, nofollow, nosnippet, noarchive"; }
