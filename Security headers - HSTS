@@ -1,0 +1,46 @@
+HSTS
+Documentation https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security and https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Strict_Transport_Security_Cheat_Sheet.html
+
+You can add the line below in thenginx_rules_custom.conffile. The predefined age below is equivalent to one year. You can ask the client if they'd like another time-span.
+add_header Strict-Transport-Security max-age=31536000;
+
+Sometimes the client needs to add the rule in a way to apply it to their subdomains, you can use this sample for that:
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+XSS-Protection
+
+Read more https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
+add_header X-XSS-Protection "1; mode=block";
+
+X-Content-Type-Options
+
+Reference https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options
+add_header X-Content-Type-Options nosniff;
+
+X-Frame-Options
+
+Read more https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options and https://owasp.org/www-community/attacks/Clickjacking
+add_header X-Frame-Options SAMEORIGIN;
+
+Content Security Policy (CSP)
+This is one of the more complex security headers we will put in place. This is something customers should provide and we simply paste it in, as writing these policies will be site-specific and easy to misconfigure.
+
+There are a couple of samples here but this header isn't as straightforward as the others in this document.
+Sample #1
+add_header Content-Security-Policy "default-src 'self';";
+
+Sample #2
+add_header Content-Security-Policy "default-src https:; script-src https: 'unsafe-inline'; style-src https: 'unsafe-inline'";
+
+Sample #3 (frame-ancestors)
+add_header Content-Security-Policy "frame-ancestors 'self' other.site.com;";
+
+Referrer-Policy
+
+If a user provides a referrer policy that should be used, we can add this. For example:
+add_header Referrer-Policy strict-origin-when-cross-origin;
+
+Permissions-Policy (previously Feature-Policy)
+
+This is another user-generated header that can be put in place. This should be customized by them for their specific site, but for example:
+add_header Permissions-Policy "accelerometer=(), ambient-light-sensor=(), autoplay=(self), camera=(self), geolocation=(self), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), usb=()";
