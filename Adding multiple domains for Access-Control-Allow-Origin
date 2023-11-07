@@ -1,0 +1,25 @@
+This can be customized to apply not only to CORS but to any other headers that Nginx restricts by default.
+
+    Enable ngx_http_headers_more_filter_module.so.
+    This is done by editing the nginx.conf. Here add the line below to the list of load_module entries in the screenshot.
+
+load_module /usr/lib/nginx/modules/ngx_http_headers_more_filter_module.so;
+
+In adaptable/main.http.conf add the following rule, customizing it to include each domain you need to set this for. 
+
+map $http_origin $cors_origin {
+# default value - empty, no ACAO header.
+default '';
+
+# all your domains
+"~*https?://localhost" $http_origin;
+"~*https?://domainone.com" $http_origin;
+"~*https?://www.domainone.com" $http_origin;
+"~*https?://sub.domain.com" $http_origin;
+"~*https?://www.domaintwo.com" $http_origin;
+
+    }
+
+Add the more_set_headers value into nginx_rules.conf
+
+more_set_headers "Access-Control-Allow-Origin: $cors_origin";
