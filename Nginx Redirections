@@ -1,0 +1,207 @@
+Temporary and permanent
+Temporary (302) and permanent (301) flag can be added to any rewrite. The type should be decided by the customer since it affects SEO.
+If no flag is specified Nginx will default to using temporarily.
+
+Case-insensitive-redirection
+If the customer needs case insensitivity, you can use the examples below as a base to implement various rules.
+
+Example #1
+rewrite "(?i)barfoo" "https://www.kinsta.com" permanent;
+
+Example #2
+rewrite "(?i)^/foobar" "https://www.kinsta.com" permanent;
+
+Example #3
+location ~* "barfoo" {
+    return 301 https://www.kinsta.com;
+}
+
+Example #4
+location ~* "^/foobar" {
+    return 301 https://www.kinsta.com;
+}
+
+Example #5
+if ( $request_uri ~* "^/Pages/Contact-Us\.aspx\?tab=1" ) {
+    return 301 https://www.eerdmans.com/ordering-information/;
+}
+
+Arguments in URI
+
+If there is a query string in the URI we need to add the redirect manually. Either with as an "exact match" (Sample #1) or with a regular expression (Sample #2).
+
+Sample #1
+if ( $request_uri = "/author_display.php?auth=Carole-Banks" ) {
+    return 301 https://www.empoweringparents.com/blog/author/carolb/;
+}
+
+Sample #2
+if ( $request_uri ~* "^\/021430\/(?:\d+\/)?\?dex\=.*" ) {
+    return 301 https://gossiptrender.com/021430/index.php;
+}
+
+Stripping query strings
+In some cases, customers need a redirect which strips all query strings. The rule below strips ALL query strings on ALL pages.
+
+If a replacement string includes the new request arguments, the previous request arguments are appended after them. If this is undesired, putting a question mark at the end of a replacement string avoids having them appended
+Source:http://nginx.org/en/docs/http/ngx_http_rewrite_module.html#rewrite
+
+if ( $query_string ~ "^(.+)$") {
+    rewrite ^(.*) $1? permanent;
+}
+
+Redirect only if there is no query string present
+There are some cases when the client needs redirection only if there isn't any argument in the URI. In a case like that, you can use the edited version of the rule below.
+
+if ($request_uri !~ "^/\?") {
+    rewrite "^/$" "https://www.sampledomain.com" permanent;
+}
+
+Redirect between query strings while passing an argument
+
+Rather than using Rewrite which ignores regex for query strings and won't capture the value, an IF statement should be used.
+The example below will rewrite ?affiliate=this to ?fpr=this
+if ( $request_uri ~* "^/\?affiliate=(.+)$" ){
+    set $myArgs $1;
+    set $args '';
+    rewrite ^ /?fpr=$myArgs redirect;
+}
+
+Masking
+In some cases, customers would like to mask where the request goes originally and they ask us to mask the URI. To achieve this, you'll need to add a rewrite rule where the second argument does not have a scheme and domain, and there isn't a third argument.
+
+Example #1
+rewrite "^/jobs/?(.*)$" "/job-search.php$1";
+
+Example #2
+### If there is an URI which we don't want to rewrite (e.g.: "/jobsearch")
+location ~ "^/jobs(?!earch)" {
+    rewrite "^/jobs/?(.*)$" "/job-search.php$1";
+}
+
+The content which will be masked has to be a valid file which exists in the filesystem.
+
+The rule above will catch any URI request which starts with /jobs and does an internal rewrite (masks the request) to /job-search.php and appends the query string if there was one. The second sample applies a negative lookahead to make sure that the other URI won't be affected.
+
+Masking a Directory or Subdirectory
+There are sometimes cases where a customer will want to mask a WordPress directory/subdirectory/URL (or other code-generated permalink). In this case a rewrite will not work; you must instead use a self-referential proxy_pass. The following would be added in the NGINX custom configuration:
+
+If the destination URL has a trailing slash you need to be sure to add it to your proxy_pass too, otherwise WordPress will keep redirecting to it.
+location ^~ /mask-directory  {
+    proxy_pass $scheme://$host/actual-directory;
+    proxy_ssl_name $host;
+	proxy_ssl_server_name on;
+}
+
+Forcing domain
+In case the customer needs to force one of their domain (without SSL force), you can use these rule as a template. 
+
+This rule will force all 'non-www' requests to the 'www' subdomain.
+if ($host ~ "^domain\.com") {
+    rewrite "^(.*)$" "http://www.domain.com$1" permanent;
+}
+
+This rule will force all subdomains of one domain to another domain
+if ($host ~ "^(.*)\.domain1\.com") {
+    rewrite "^(.*)"$ "http://domain2.com$1" permanent;
+}
+
+This rule will force all subdomains minus a few exclusions to another domain
+if ($host ~ "^(?!www|help).*\.domain1\.com") {
+    rewrite "^(.*)"$ "http://domain2.com$1" permanent;
+}
+
+This example's purpose is to get a better grasp when to do which type of redirect and how to use bulk rewrites. Note that the sample is forcing SSL too.
+
+if ($host ~* "^www\.domain\.com$") {
+    rewrite "^/sv/(.*)$" https://www.domain.se/$1 permanent;
+    rewrite "^/uk/(.*)$" https://www.domain.co.uk/$1 permanent;
+    rewrite "^/ee/(.*)$" https://www.domain.ee/$1 permanent;
+    rewrite "^/ie/(.*)$" https://www.domain.ie/$1 permanent;
+    rewrite "^/nb/(.*)$" https://www.domain.no/$1 permanent;
+    rewrite "^/da/(.*)$" https://www.domain.dk/$1 permanent;
+    rewrite "^/fi/(.*)$" https://www.domain.fi/$1 permanent;
+    rewrite "^/nl/(.*)$" https://www.domain.nl/$1 permanent;
+    rewrite "^/de/(.*)$" https://www.domain.de/$1 permanent;
+    rewrite "^/tr/(.*)$" https://www.domain.com.tr/$1 permanent;
+    rewrite "^/pt/(.*)$" https://www.domain.com.pt/$1 permanent;
+    rewrite "^/it/(.*)$" https://it.domain.com/$1 permanent;
+    rewrite "^/es/(.*)$" https://www.domain2.com/$1 permanent;
+    rewrite "^/pl/(.*)$" https://pl.domain.com/$1 permanent;
+    rewrite "^/fr/(.*)$" https://www.domain.fr/$1 permanent;
+}
+
+Subdomain to subfolder redirect with Let's Encrypt
+Let's Encrypt checks if the domain is pointed to the server correctly, but a redirect rule would fail this process. In this case, we can append the rule with a negative lookahead as follows.
+
+if ($host = "airport.domain.com") {
+    rewrite "^(?!/.well-known)(.*)" "https://www.domain.com/airport$1" permanent;
+}
+
+For the sake of this example the request is:
+    redirect every subdomain which has at most three characters to the primary domain
+    the naked (non-www) domain to the primary domain where the primary domain is:www.redirect.xmp
+
+That means that we need to avoid having a redirect loop for 'www' and make the subdomain optional and limit it to 3 characters (e.g.,shop.redirect.xmp will not redirect).
+
+if ( $host ~* "^(?!www)([a-zA-Z0-9-_]{1,3}\.)?redirect\.xmp$" ) {
+    rewrite "^(.*)$" "$scheme://www.redirect.xmp$1" permanent;
+}
+
+Remove trailing slash
+The rule below will capture any URI string (including the first slash) except the trailing slash. Also, it won't fire if the URI starts with /wp-admin.
+
+rewrite ^(?!/wp-admin)(.+)/$ $1 permanent;
+
+Redirect all pages to site root (Excluding admin area and assets)
+
+set $is_redirectable 0;
+if ($request_uri ~* "^/[a-zA-Z0-9_-]") {
+    set $is_redirectable 1;
+}
+ 
+if ($request_uri ~* "(^/wp-content|^/wp-admin|^/wp-includes|^/wp-login\.php)" ) {
+    set $is_redirectable 0;
+}
+ 
+if ( $is_redirectable = "1" ){
+    return 301 https://domain.com;
+}
+
+Redirect URL with spaces
+
+In case, you encounter a space in the URL which needs to be redirected, you can use the formula below. The idea here is to have either any whitespace\sor the URL encoded (Percent Encoding) equivalent of space%20added to the rule.
+
+###URI: https://mydomain.com/about us
+
+###sample with 301 redirect:
+if ( $request_uri ~ "^/about(\s|%20)us/" ) {
+    return 301 https://www.mydomain.com/sales;
+}
+
+Alternatively, if a simple rewrite rule is feasible, you can use "\x20" or by typing a literal space if you surround the regex in quotes (which is always recommended).
+###URI: https://mydomain.com/about us
+
+###Sample #1
+rewrite "^/about us" "/sales" permanent;
+
+###Sample #2
+rewrite "^/about\x20us" "/sales" permanent;
+
+Redirect percent-encoded URLs
+
+You may need the rule below to be able to redirect URL encoded addresses.
+Let's say we need to redirect this URI: /%E2%80%8E
+
+rewrite "^/\xE2\x80\x8E/?$" "/" permanent;
+
+Remove .php extensions from URLs without breaking wp-login.php and other WP core files
+set $redir_file_exists 0;
+set $redir_is_php 0;
+if (-f $request_filename) { set $redir_file_exists 1; }
+if ($request_uri ~ '\.php$') { set $redir_is_php 1; }
+set $do_redir "$redir_file_exists$redir_is_php";
+if ($do_redir = '01') {
+    rewrite /(.*)\.php$ /$1/ permanent;
+}
+
