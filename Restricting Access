@@ -1,0 +1,65 @@
+Restricting Access to the WP admin area
+
+If the customer would like to give access to certain IP addresses on the WordPress login page, you can use the sample below, if the customer is using a custom login URL, you can simply add it to the first IF block by using |^/customURL where customURL is the login URL the customer is using.
+
+Add this part to our nginx_rules.conf file:
+
+##############################
+# START CUSTOM RESTRICT ACCESS
+# Date added:
+# Date last modified:
+# Author: 
+# Description:
+# 
+##############################
+# Restrict access to wp-login and wp-admin by excluding admin-ajax and allow a set
+#of IPs to bypass the block.
+
+if ( $request_uri ~* "^/wp-login.php|^/wp-admin(?!/admin-ajax)" ) {
+    set $blockedURL 1;
+}
+
+set $blockRequests "${blockedURL}${excludedList}";
+if ($blockRequests = 10) {
+    return 403;
+}
+############################
+# END CUSTOM RESTRICT ACCESS
+############################
+
+And add this part in adaptable/main.httpd.conf file, being sure to customise the IPs with the one provided by the customer:
+map $remote_addr $excludedList {
+    default 0;
+    000.000.000.000 1;
+    111.111.111.111 1;
+}
+
+
+Restricting Access by IP to a Custom Login Location
+
+If you would like to allow only certain IPs to a custom login location, the rule below will work. Update 000.000.000.000 to the IP needed, adding additional lines for each one if there are multiple IPs.
+
+In adaptable/main.httpd.conf:
+map $remote_addr $is_allowed_login {
+    default 0;
+    000.000.000.000 1;
+}
+
+In nginx_rules_custom.conf:
+##############################
+# START CUSTOM RESTRICT ACCESS
+# Date added:
+# Date last modified:
+# Author: 
+# Description:
+# 
+##############################
+location ~* /path/to/location {
+    if ( $is_allowed_login = 0 ) {
+        return 403;
+    }
+    try_files $uri $uri/ /index.php?$args;
+}
+############################
+# END CUSTOM RESTRICT ACCESS
+############################
