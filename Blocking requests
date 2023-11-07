@@ -1,0 +1,77 @@
+In case, the customer wants to block requests by something other than IP address you can use the sample rules below. As usual, keep in mind that using regex (~) could apply for something you didn't want to block.
+
+Don't forget! When using ~* in an IF statement or a location block, RegEx is used to find a match. This means you'll need to escape special characters within the string or it won't match.
+
+Typically characters which need to be escaped are:
+
+. \ + * ? [ ^ ] $ ( ) { } = ! < > | : -
+
+Block by Referrer
+if ($http_referer ~* "bad-site-to-block\.com") {
+    return 403;
+}
+
+Block by User Agent
+if ($http_user_agent ~* "Mozilla\/5\.0 \(Windows NT 6\.1; WOW64; rv:40\.0\) Gecko/20100101 Firefox\/40\.1") {
+   return 403;
+ }
+
+Block a Specific Location
+location ~* "^/wp-json/wiremo/" { 
+return 403;
+}
+
+Blocking Multiple Directories
+location ~* "^/(directory1|directory2|directory3|directory4)" { 
+return 403;
+}
+
+Prevent Bots from Indexing certain directories or filetypes
+#This example will prevent Googlebot from visiting the wp-content/uploads directory and indexing its contents, instead redirecting them to the homepage.
+#You can also specific a certain file type in /uploads such as ^/wp-content/uploads/*.pdf$
+set $isUri 0;
+set $isGoogle 0;
+if ( $http_user_agent ~* "Googlebot" ) { set $isGoogle 1; }
+if ( $request_uri ~* "^/wp-content/uploads/(.*)$" ) { set $isUri 1; }
+set $blockable ${isUri}${isGoogle};
+if ( $blockable = "11" ) { return 301 https://www.domain.com; }
+
+This example will prevent any requests containing a query string of "http" from visiting the /products/ directory, such as:
+https://domain.com/product/preview/?http://somebaddomain.tld/p/=-1%27OR%201%3d1
+This will prevent "http" query strings from being used on /product pages
+set $isUri 0;
+set $isSusp 0;
+if ( $request_uri ~* "^/product/" ) { set $isUri 1; }
+if ( $query_string ~ "http://" ) { set $isSusp 1; }
+set $blockable ${isUri}${isSusp};
+if ( $blockable = "11" ) { return 403; }
+
+This example prevents non-logged in users from viewing the docx and pdf filetypes which are uploaded in the ninja-forms upload directory.
+This will prevent non-logged in users from accessing the docx & pdf filetypes for the given location
+set $wp_logged_in 0;
+set $ninja_file 0;
+
+
+if ($http_cookie ~* "wordpress_logged_in") {
+  set $wp_logged_in 1;
+}
+
+if ($request_uri ~* "ninja-forms/(.*)\.(pdf|docx)$") {
+  set $ninja_file 1;
+}
+
+set $ninja_file_access "${wp_logged_in}${ninja_file}";
+
+if ( $ninja_file_access = "01"  ) { 
+return 403; 
+}
+
+Note: blocked assets could still be served by CDN. Be sure the customer excludes any relevant blocked file extensions from the CDN if it is enabled.
+location ~* "\.(asp|py|perl)$" {
+  return 403;
+}
+
+If the rule you are writing requires the use of request uri, the above can be converted to this:
+if ( $request_uri ~* "\.(asp|py|perl)$" ) {
+  return 403;
+}
