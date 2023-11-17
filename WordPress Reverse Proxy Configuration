@@ -10,6 +10,7 @@ location ^~ /subsite-will-load-here/ {
 
 Sub Site Nginx Configuration
 
+rewrite /wp-admin$ /wp-admin/ last;
 rewrite ^/subsite-will-load-here/(.*)$ /$1 last;
 
 WordPress Changes (subsite):
